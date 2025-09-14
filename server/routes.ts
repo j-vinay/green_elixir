@@ -128,6 +128,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/herbs/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Validate that the ID is a valid number
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid herb ID. Must be a number." });
+      }
+      
       const herb = await storage.getHerbById(id);
       
       if (!herb) {

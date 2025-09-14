@@ -1,10 +1,21 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { AuthForms } from "@/components/AuthForms";
 import { Leaf, Brain, Box } from "lucide-react";
 
 export default function Landing() {
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+
+  const handleAuthSuccess = () => {
+    setIsAuthDialogOpen(false);
+    // The useAuth hook will automatically detect the authentication change
+    // and App.tsx will handle the routing
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -31,14 +42,20 @@ export default function Landing() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button 
-                size="lg" 
-                className="text-lg px-8 py-4"
-                onClick={() => window.location.href = '/api/login'}
-                data-testid="button-start-journey"
-              >
-                Start Your Journey
-              </Button>
+              <Dialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    size="lg" 
+                    className="text-lg px-8 py-4"
+                    data-testid="button-start-journey"
+                  >
+                    Start Your Journey
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <AuthForms onSuccess={handleAuthSuccess} />
+                </DialogContent>
+              </Dialog>
               <Button 
                 variant="outline" 
                 size="lg" 

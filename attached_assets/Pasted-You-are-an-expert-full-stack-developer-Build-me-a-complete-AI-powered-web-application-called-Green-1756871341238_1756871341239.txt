@@ -1,0 +1,120 @@
+You are an expert full-stack developer.
+Build me a complete AI-powered web application called “Green Elixir Vision: The Future of Herbal Healing” with the following features and specifications:
+
+🔑 Project Overview
+
+The platform should combine AI/ML, NLP, and 3D visualization with an Ayurvedic plant database to deliver personalized herbal remedies for health issues and educational purposes.
+
+🎯 Core Features
+
+User Search Functionality
+
+Search for plants by name or category.
+
+Display plant details: description, benefits, uses, cultivation, soil/climate requirements.
+
+AI Health Recommendations
+
+Input: User types symptoms in plain English.
+
+Processing: Use NLP (Flask + Python ML libraries).
+
+Output: Suggest Ayurvedic remedies (herbs, usage methods).
+
+3D Plant Visualization
+
+Use Three.js or React-Three-Fiber for interactive 3D herbal models.
+
+Allow zoom, rotate, and annotations on plant parts.
+
+Database Management
+
+Use MySQL for plant data and user queries.
+
+Schema should include:
+
+plants( id, plant_name, scientific_name, description, benefits, cultivation, climate, image_3D_model_link )
+users( id, username, email, password, bookmarks, history )
+
+
+Flask should expose APIs to fetch plant data, user history, and remedies.
+
+User Interface (Frontend)
+
+Tech: HTML, CSS, Tailwind CSS, React.js
+
+Fully responsive UI (desktop + mobile).
+
+Pages:
+
+Home → Intro to Ayurveda + Featured Herbs
+
+Plant Search → Search + List + Detail View
+
+Remedies → AI-based suggestions
+
+3D Viewer → Interactive herbal models
+
+About & Contact
+
+Authentication (Optional)
+
+Login/Signup with Flask + MySQL.
+
+Store user’s remedy history + bookmarks.
+
+⚙️ Tech Stack
+
+Frontend: React.js, Tailwind CSS, HTML, CSS
+
+Backend: Flask (Python)
+
+Database: MySQL
+
+AI Component: Python (Flask ML + NLP using spaCy / scikit-learn / TensorFlow)
+
+3D Visualization: Three.js or React-Three-Fiber
+
+IDE/Tools: VS Code
+
+Hosting: Vercel/Netlify (frontend) + Render/Railway (backend with Flask)
+
+📋 Development Model
+
+Follow Incremental Development:
+
+Build MySQL database + Flask API for plant data.
+
+Create React frontend with Tailwind CSS.
+
+Integrate Flask AI/NLP module for health recommendations.
+
+Add 3D visualization (Three.js/React-Three-Fiber).
+
+Add authentication + personalization.
+
+📊 Deliverables
+
+Complete codebase (React frontend + Flask backend).
+
+MySQL database schema + scripts.
+
+Flask API endpoints for search, remedies, user data.
+
+Integrated 3D models for herbal plants.
+
+Documentation (README.md) with setup + usage instructions.
+
+🏁 Expected Output
+
+A fully working web app where:
+
+Users can search herbal plants and view them in 3D.
+
+AI (Flask NLP) suggests remedies based on symptoms.
+
+Plant data is stored and retrieved from MySQL.
+
+The platform works as both an educational tool and a healthcare assistant.
+
+👉 Ensure the code is modular, clean, and production-ready with comments and best practices.

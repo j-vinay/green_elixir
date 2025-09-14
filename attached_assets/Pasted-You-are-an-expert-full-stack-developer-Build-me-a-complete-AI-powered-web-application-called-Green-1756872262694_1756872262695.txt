@@ -1,0 +1,137 @@
+You are an expert full-stack developer.
+Build me a complete AI-powered web application called “Green Elixir Vision: The Future of Herbal Healing” with the following specifications:
+
+🔑 Project Overview
+
+A Flask + React + Tailwind CSS + MySQL web platform that:
+
+Promotes the importance of Ayurveda.
+
+Allows users to explore Ayurvedic herbs with 3D models and get AI-powered health recommendations.
+
+Allows admins to add/update herbs and their 3D models.
+
+🎨 Frontend (React + Tailwind CSS + HTML + CSS)
+
+Home Page (Classic + Simple Design)
+
+Clean, minimal UI.
+
+Content only about Ayurveda’s importance.
+
+Header with Login / Signup buttons.
+
+Post-Login Pages
+
+Herbs Page → Display list of herbs from the database.
+
+On clicking a herb → Show its detailed info + interactive 3D model (via Three.js / React-Three-Fiber).
+
+Header (After Login)
+
+Links: Herbs | AI Recommendations | Logout.
+
+AI Recommendations Button → Redirects to an AI Chatbot page where users can input symptoms → Flask backend processes via NLP → Suggest Ayurvedic remedies.
+
+🔐 Authentication
+
+User Login/Signup:
+
+Sign up → username, email, password (store securely in MySQL).
+
+Login → Redirect to Herbs Page.
+
+Admin Login:
+
+Separate login route.
+
+Admin dashboard with form to Add new herbs → (name, scientific name, description, benefits, cultivation, climate, image, 3D model link).
+
+Admin can also edit/delete herbs.
+
+⚙️ Backend (Flask + Python)
+
+API Endpoints:
+
+/api/herbs → GET all herbs.
+
+/api/herbs/<id> → GET single herb (with 3D model link).
+
+/api/recommend → POST symptoms → NLP → Suggest remedies.
+
+/api/admin/add-herb → POST new herb (admin only).
+
+/api/admin/update-herb/<id> → PUT update herb info.
+
+/api/admin/delete-herb/<id> → DELETE herb.
+
+AI/NLP Chatbot
+
+Flask processes user input symptoms with spaCy / scikit-learn / TensorFlow NLP.
+
+Uses rule-based + ML classification to match herbs to symptoms.
+
+Returns recommended herbs + usage instructions.
+
+🗄 Database (MySQL)
+
+Tables:
+
+users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(100),
+  email VARCHAR(150) UNIQUE,
+  password_hash VARCHAR(255),
+  role ENUM('user','admin') DEFAULT 'user'
+);
+
+herbs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  plant_name VARCHAR(100),
+  scientific_name VARCHAR(150),
+  description TEXT,
+  benefits TEXT,
+  cultivation TEXT,
+  climate TEXT,
+  image_url VARCHAR(255),
+  model_3d_url VARCHAR(255)
+);
+
+user_history (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT,
+  symptoms TEXT,
+  recommendation TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+📊 Development Flow
+
+Create Flask backend with MySQL schema.
+
+Build React frontend with Tailwind CSS:
+
+Home → Herbs Page → Herb Detail (3D).
+
+AI Chatbot page.
+
+Add authentication (User + Admin).
+
+Add Admin panel to manage herbs.
+
+Integrate AI chatbot.
+
+Deploy frontend (Vercel/Netlify) + backend (Render/Railway).
+
+🏁 Expected Output
+
+Homepage → Ayurveda importance + login/signup.
+
+After login (User) → Herbs list → Click herb → See details + 3D model → AI recommendations chatbot.
+
+Admin Panel → Add/edit herbs with all details + 3D models.
+
+AI chatbot → Users enter symptoms → Get Ayurvedic remedies.
+
+👉 Code should be clean, modular, well-documented with comments and best practices.

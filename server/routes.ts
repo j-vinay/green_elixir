@@ -1,28 +1,109 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertHerbSchema, insertUserHistorySchema, insertUserBookmarkSchema } from "@shared/schema";
+import { setupAuth, isAuthenticated, hashPassword } from "./auth";
+import { insertHerbSchema, insertUserHistorySchema, insertUserBookmarkSchema, signUpSchema, signInSchema } from "@shared/schema";
+import passport from "passport";
+import rateLimit from "express-rate-limit";
 import { NLPService } from "./services/nlpService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Rate limiting for auth endpoints
+  const authRateLimit = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 5, // limit each IP to 5 requests per windowMs
+    message: { message: "Too many authentication attempts, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
   // Auth middleware
   await setupAuth(app);
 
   // Auth routes
+  app.post('/api/auth/signup', authRateLimit, async (req, res) => {
+    try {
+      const userData = signUpSchema.parse(req.body);
+      // Normalize email to lowercase
+      userData.email = userData.email.toLowerCase();
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+      
+      // Hash password and create user
+      const hashedPassword = await hashPassword(userData.password);
+      const newUser = await storage.createUser({
+        name: userData.name,
+        email: userData.email,
+        password: hashedPassword
+      });
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = newUser;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error during signup:", error);
+      res.status(400).json({ message: "Failed to create account" });
+    }
+  });
+
+  app.post('/api/auth/signin', authRateLimit, (req, res, next) => {
+    try {
+      const userData = signInSchema.parse(req.body);
+      // Normalize email to lowercase
+      userData.email = userData.email.toLowerCase();
+      
+      // Update the request body with normalized email
+      req.body.email = userData.email;
+      
+      passport.authenticate('local', (err: any, user: any, info: any) => {
+        if (err) {
+          return res.status(500).json({ message: "Authentication error" });
+        }
+        if (!user) {
+          return res.status(401).json({ message: info?.message || "Invalid credentials" });
+        }
+        
+        req.logIn(user, (err) => {
+          if (err) {
+            return res.status(500).json({ message: "Login error" });
+          }
+          const { password, ...userWithoutPassword } = user;
+          res.json(userWithoutPassword);
+        });
+      })(req, res, next);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid input data" });
+    }
+  });
+
+  app.post('/api/auth/logout', (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout error" });
+      }
+      // Destroy session completely
+      req.session.destroy((err) => {
+        if (err) {
+          return res.status(500).json({ message: "Session destruction error" });
+        }
+        res.clearCookie('connect.sid'); // Clear session cookie
+        res.json({ message: "Logged out successfully" });
+      });
+    });
+  });
+
   app.get('/api/auth/user', async (req: any, res) => {
     try {
-      // Check if user is authenticated
-      if (!req.isAuthenticated() || !req.user?.claims?.sub) {
+      if (!req.isAuthenticated() || !req.user) {
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      res.json(user);
+      const { password, ...userWithoutPassword } = req.user;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -47,6 +128,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/herbs/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      
+      // Validate that the ID is a valid number
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid herb ID. Must be a number." });
+      }
+      
       const herb = await storage.getHerbById(id);
       
       if (!herb) {
@@ -63,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes for herb management
   app.post('/api/admin/herbs', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (user?.role !== 'admin') {
@@ -81,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/admin/herbs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (user?.role !== 'admin') {
@@ -100,7 +187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/admin/herbs/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const user = await storage.getUser(userId);
       
       if (user?.role !== 'admin') {
@@ -128,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recommendation = await NLPService.analyzeSymptoms(symptoms);
       
       // Save to user history
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       await storage.createUserHistory({
         userId,
         symptoms,
@@ -146,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User history routes
   app.get('/api/user/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const history = await storage.getUserHistory(userId);
       res.json(history);
     } catch (error) {
@@ -158,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User bookmarks routes
   app.post('/api/user/bookmarks', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookmarkData = insertUserBookmarkSchema.parse({
         ...req.body,
         userId
@@ -174,7 +261,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/user/bookmarks/:herbId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const herbId = parseInt(req.params.herbId);
       
       await storage.removeBookmark(userId, herbId);
@@ -187,7 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/user/bookmarks', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const bookmarks = await storage.getUserBookmarks(userId);
       res.json(bookmarks);
     } catch (error) {

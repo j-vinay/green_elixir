@@ -77,18 +77,44 @@ export class DatabaseStorage implements IStorage {
   // Herb operations
   async getAllHerbs(search?: string, category?: string): Promise<Herb[]> {
     let query = db.select().from(herbs);
-    
-    let conditions = [eq(herbs.isPublished, true)];
-    
-    if (search) {
-      conditions.push(ilike(herbs.plantName, `%${search}%`));
+
+    // base condition: only published herbs
+    const conditions: any[] = [eq(herbs.isPublished, true)];
+
+    if (search && search.trim().length > 0) {
+      const s = `%${search.trim()}%`;
+      // match against plantName OR benefits using ilike
+      // drizzle doesn't have a built-in OR combinator helper in your snippet,
+      // but you can use db.raw or two where conditions joined by or depending on your drizzle version.
+      // We'll use `ilike` on plantName OR ilike on benefits by using `.where(sql\`...\`)` for safety.
+      // If your drizzle version provides or(), replace accordingly.
+      // Simpler approach: build an 'or' by using raw SQL fragment:
+      query = query.where(
+        and(
+          ...conditions,
+          // raw or expression
+          // @ts-ignore
+          db.raw(
+            `(${herbs.plantName} ILIKE ? OR ${herbs.benefits} ILIKE ?)`,
+            [s, s]
+          )
+        )
+      );
+    } else {
+      if (category && category !== "All") {
+        conditions.push(eq(herbs.category, category));
+      }
+      query = query.where(and(...conditions));
     }
-    
-    if (category) {
-      conditions.push(eq(herbs.category, category));
+
+    // If category is provided even with search, apply it too
+    if (category && category !== "All") {
+      // append category filter to current query conditions
+      query = query.where(eq(herbs.category, category));
     }
-    
-    return await query.where(and(...conditions)).orderBy(asc(herbs.plantName));
+
+    // order by plant name
+    return await query.orderBy(asc(herbs.plantName));
   }
 
   async getHerbById(id: number): Promise<Herb | undefined> {

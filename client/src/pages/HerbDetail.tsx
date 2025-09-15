@@ -208,9 +208,9 @@ export default function HerbDetail() {
                 )}
                 
                 {herb.usageInstructions && (
-                  <Card className="p-6 bg-accent/10 border-accent/20">
-                    <h4 className="font-medium mb-2 text-accent-foreground">Usage Instructions</h4>
-                    <p className="text-sm text-muted-foreground">
+                  <Card className="p-6">
+                    <h4 className="font-serif text-xl font-semibold mb-3">Usage Instructions</h4>
+                    <p className="text-muted-foreground leading-relaxed text-sm">
                       {herb.usageInstructions}
                     </p>
                   </Card>

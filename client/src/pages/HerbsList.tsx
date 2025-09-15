@@ -1,4 +1,5 @@
-import { useState } from "react";
+// client/src/pages/HerbsList.tsx
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,52 +13,86 @@ import type { Herb } from "@shared/schema";
 const categories = [
   "All",
   "Digestive",
-  "Respiratory", 
+  "Respiratory",
   "Immunity",
   "Skin Care",
   "Anti-inflammatory",
   "Adaptogenic",
-  "Brain Health"
+  "Brain Health",
 ];
 
 export default function HerbsList() {
-  const [search, setSearch] = useState("");
+  const [rawSearch, setRawSearch] = useState("");
+  const [search, setSearch] = useState(""); // debounced value
   const [selectedCategory, setSelectedCategory] = useState("All");
 
-  const { data: herbs = [], isLoading, error } = useQuery<Herb[]>({
-    queryKey: ["/api/herbs", search || undefined, selectedCategory !== "All" ? selectedCategory : undefined],
+  // basic debounce: update `search` 400ms after user stops typing
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(rawSearch.trim()), 400);
+    return () => clearTimeout(t);
+  }, [rawSearch]);
+
+  // build a stable queryKey
+  const queryKey = useMemo(
+    () => ["herbs", search || undefined, selectedCategory !== "All" ? selectedCategory : undefined],
+    [search, selectedCategory]
+  );
+
+  // queryFn: call your backend with query params
+  const fetchHerbs = async () => {
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (selectedCategory && selectedCategory !== "All") params.set("category", selectedCategory);
+
+    const res = await fetch(`/api/herbs?${params.toString()}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin", // include cookies for session auth if needed
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to load herbs: ${res.status} ${text}`);
+    }
+    return (await res.json()) as Herb[];
+  };
+
+  const { data: herbs = [], isLoading, error, refetch } = useQuery<Herb[]>({
+    queryKey,
+    queryFn: fetchHerbs,
+    keepPreviousData: true,
+    staleTime: 1000 * 30, // 30s
+    retry: 1,
   });
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
-              <h1 className="font-serif text-4xl font-bold text-foreground mb-4">
-                Herbal Database
-              </h1>
+              <h1 className="font-serif text-4xl font-bold text-foreground mb-4">Herbal Database</h1>
               <p className="text-xl text-muted-foreground">
                 Explore our comprehensive collection of Ayurvedic herbs
               </p>
             </div>
-            
+
             {/* Search and Filter */}
             <div className="mb-8 space-y-4">
               <div className="relative max-w-md mx-auto">
                 <Input
                   type="text"
                   placeholder="Search herbs by name or benefit..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={rawSearch}
+                  onChange={(e) => setRawSearch(e.target.value)}
                   className="pl-12"
                   data-testid="input-search-herbs"
                 />
                 <Search className="w-5 h-5 absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
               </div>
-              
+
               {/* Category Filter */}
               <div className="flex flex-wrap gap-2 justify-center">
                 {categories.map((category) => (
@@ -65,7 +100,11 @@ export default function HerbsList() {
                     key={category}
                     variant={selectedCategory === category ? "default" : "outline"}
                     size="sm"
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => {
+                      setSelectedCategory(category);
+                      // refetch immediately when category changes
+                      // (react-query will also run automatically because queryKey changed)
+                    }}
                     className="rounded-full"
                     data-testid={`button-category-${category.toLowerCase()}`}
                   >
@@ -74,7 +113,7 @@ export default function HerbsList() {
                 ))}
               </div>
             </div>
-            
+
             {/* Loading State */}
             {isLoading && (
               <div className="text-center py-12">
@@ -82,22 +121,22 @@ export default function HerbsList() {
                 <p className="text-muted-foreground">Loading herbs...</p>
               </div>
             )}
-            
+
             {/* Error State */}
             {error && (
               <Card className="p-8 text-center">
                 <p className="text-destructive mb-4">Failed to load herbs. Please try again.</p>
-                <Button onClick={() => window.location.reload()}>Retry</Button>
+                <Button onClick={() => refetch()}>Retry</Button>
               </Card>
             )}
-            
+
             {/* Empty State */}
             {!isLoading && !error && herbs.length === 0 && (
               <Card className="p-8 text-center">
                 <p className="text-muted-foreground">No herbs found matching your criteria.</p>
               </Card>
             )}
-            
+
             {/* Herbs Grid */}
             {!isLoading && !error && herbs.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
